@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+cache/
+*.session
+*.session-journal
+venv/
+__pycache__/
+cache/
+*.pyc
+.env
+cookies.txt
+*.log
+.DS_Store
