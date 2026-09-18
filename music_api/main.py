@@ -18,10 +18,13 @@ YTDLP_PROXY = os.getenv("YTDLP_PROXY", "").strip()
 def yt_dlp_options(options: dict[str, Any]) -> dict[str, Any]:
     if YTDLP_PROXY:
         options["proxy"] = YTDLP_PROXY
-    
-    # تفعيل تسجيل الدخول التلقائي OAuth2 وتجاوز الكوكيز وحظر يوتيوب
-    options["username"] = "oauth2"
-    options["credential_alias"] = "default"
+
+    # التمويه كعميل تطبيق هاتف لتجاوز حظر يوتيوب وبدون كوكيز
+    options["extractor_args"] = {
+        "youtube": {
+            "player_client": ["android", "ios", "mweb"],
+        }
+    }
     
     return options
 
