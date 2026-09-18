@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -7,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 
 app = FastAPI(title="Music API", version="1.0.0")
+logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR / "cache"
 CACHE_DIR.mkdir(exist_ok=True, parents=True)
@@ -24,6 +26,7 @@ def search_youtube(query: str) -> dict[str, Any] | None:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(query, download=False)
     except Exception:
+        logger.exception("YouTube search failed for query: %s", query)
         return None
 
     if not info:
@@ -69,8 +72,12 @@ def download_audio_file(query: str) -> Path:
         "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "0"}],
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([result["url"]])
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([result["url"]])
+    except Exception as error:
+        logger.exception("YouTube download failed for query: %s", query)
+        raise RuntimeError("فشل تنزيل الملف من YouTube") from error
 
     matches = sorted(CACHE_DIR.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
     for file_path in matches:
@@ -105,7 +112,7 @@ def search(q: str = Query(..., description="اسم الأغنية أو رابط 
 def download(q: str = Query(..., description="اسم الأغنية")) -> FileResponse:
     try:
         file_path = download_audio_file(q)
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, RuntimeError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return FileResponse(
