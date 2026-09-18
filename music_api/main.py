@@ -12,16 +12,23 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR / "cache"
 CACHE_DIR.mkdir(exist_ok=True, parents=True)
+YTDLP_PROXY = os.getenv("YTDLP_PROXY", "").strip()
+
+
+def yt_dlp_options(options: dict[str, Any]) -> dict[str, Any]:
+    if YTDLP_PROXY:
+        options["proxy"] = YTDLP_PROXY
+    return options
 
 
 def search_youtube(query: str) -> dict[str, Any] | None:
-    ydl_opts = {
+    ydl_opts = yt_dlp_options({
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
         "default_search": "ytsearch1",
         "extract_flat": False,
-    }
+    })
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(query, download=False)
@@ -63,14 +70,14 @@ def download_audio_file(query: str) -> Path:
         raise FileNotFoundError("لم يتم العثور على الأغنية")
 
     outtmpl = str(CACHE_DIR / "%(title)s.%(ext)s")
-    ydl_opts = {
+    ydl_opts = yt_dlp_options({
         "quiet": True,
         "no_warnings": True,
         "format": "bestaudio/best",
         "outtmpl": outtmpl,
         "noplaylist": True,
         "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "0"}],
-    }
+    })
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
